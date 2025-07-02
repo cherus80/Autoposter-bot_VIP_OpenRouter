@@ -18,7 +18,7 @@ services:
       
       # AI сервисы
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-      - OPENROUTER_POST_MODEL=${OPENROUTER_POST_MODEL:-anthropic/claude-3-opus-20240229}
+      - OPENROUTER_POST_MODEL=${OPENROUTER_POST_MODEL:-deepseek/deepseek-r1:free}
       - OPENROUTER_MAX_RETRIES=${OPENROUTER_MAX_RETRIES:-5}
       
       # Генерация изображений
@@ -38,11 +38,9 @@ services:
     
     # Монтируем тома для сохранения данных
     volumes:
-      - bot_data:/app/data
-      - bot_database:/app/database  # Добавил недостающий том для БД
-      - bot_backups:/app/backups
-      - bot_temp:/app/temp
-      - bot_logs:/app/logs
+      - ./database:/app/database  # База данных
+      - ./backups:/app/backups    # Резервные копии
+      - ./temp:/app/temp          # Временные файлы
     
     # Логирование
     logging:
