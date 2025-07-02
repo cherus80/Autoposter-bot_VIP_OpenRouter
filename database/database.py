@@ -4,10 +4,10 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from .models import Base
 
 # Определяем путь к базе данных
-# В Docker используем директорию /app/data, локально - корень проекта
-if os.path.exists('/app/data'):
+# В Docker используем директорию /app/database, локально - корень проекта
+if os.path.exists('/app/database'):
     # Запуск в Docker контейнере
-    db_path = '/app/data/autoposting_bot.db'
+    db_path = '/app/database/autoposting_bot.db'
 else:
     # Локальный запуск
     db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'autoposting_bot.db')
