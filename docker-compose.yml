@@ -11,16 +11,30 @@ services:
     
     # Переменные окружения (настройте в Portainer)
     environment:
+      # Основные токены (обязательные)
       - BOT_TOKEN=${BOT_TOKEN}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-
+      - ADMIN_IDS=${ADMIN_IDS}
+      - CHANNEL_ID=${CHANNEL_ID}
+      
+      # AI сервисы
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - OPENROUTER_POST_MODEL=${OPENROUTER_POST_MODEL:-anthropic/claude-3-opus-20240229}
+      - OPENROUTER_MAX_RETRIES=${OPENROUTER_MAX_RETRIES:-5}
+      
+      # Генерация изображений
       - FAL_AI_KEY=${FAL_AI_KEY}
+      
+      # VK публикация
       - VK_ACCESS_TOKEN=${VK_ACCESS_TOKEN}
       - VK_GROUP_ID=${VK_GROUP_ID}
-      - VK_CTA_TEXT=${VK_CTA_TEXT}
-      - CHANNEL_ID=${CHANNEL_ID}
-      - ADMIN_IDS=${ADMIN_IDS}
+      - VK_CTA_TEXT=${VK_CTA_TEXT:-🔔 Подписывайтесь на нашу группу!}
+      
+      # Прокси (опционально)
       - PROXY_URL=${PROXY_URL}
+      
+      # Логирование
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
     
     # Монтируем тома для сохранения данных
     volumes:
