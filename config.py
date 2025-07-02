@@ -35,8 +35,8 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 PROXY_URL = os.getenv("PROXY_URL")  # Опционально: "socks5://user:pass@host:port" или "http://user:pass@host:port"
 
 # Модели OpenRouter для разных задач
-OPENROUTER_POST_MODEL = os.getenv("OPENROUTER_POST_MODEL", "deepseek/deepseek-r1:free")  # Модель для генерации постов
-OPENROUTER_IMAGE_PROMPT_MODEL = os.getenv("OPENROUTER_IMAGE_PROMPT_MODEL", "deepseek/deepseek-r1:free")  # Модель для промптов изображений
+OPENROUTER_POST_MODEL = os.getenv("OPENROUTER_POST_MODEL", "anthropic/claude-3-opus-20240229")  # Модель для генерации постов
+OPENROUTER_IMAGE_PROMPT_MODEL = os.getenv("OPENROUTER_IMAGE_PROMPT_MODEL", "anthropic/claude-3-opus-20240229")  # Модель для промптов изображений
 
 # OpenAI (для транскрибации голосовых сообщений)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # Ключ OpenAI для работы с Whisper (whisper-1)

@@ -70,10 +70,13 @@ async def cb_menu_publishing_settings(cb: CallbackQuery):
         settings_text += f"🕒 <b>Часовой пояс:</b> UTC{current_timezone}\n"
         settings_text += f"   💡 <i>Влияет на отображение времени в статистике</i>\n\n"
         
-        # AI модели OpenRouter
+        # AI модели OpenRouter - берем из переменных окружения
+        post_model = OPENROUTER_POST_MODEL or "Не настроена"
+        image_model = OPENROUTER_IMAGE_PROMPT_MODEL or "Не настроена"
+        
         settings_text += f"🤖 <b>OpenRouter модели:</b>\n"
-        settings_text += f"   📝 <i>Посты:</i> {OPENROUTER_POST_MODEL}\n"
-        settings_text += f"   🎨 <i>Изображения:</i> {OPENROUTER_IMAGE_PROMPT_MODEL}\n\n"
+        settings_text += f"   📝 <i>Посты:</i> {post_model}\n"
+        settings_text += f"   🎨 <i>Изображения:</i> {image_model}\n\n"
         
         # Предупреждения
         if not settings.publish_to_tg and not settings.publish_to_vk:
