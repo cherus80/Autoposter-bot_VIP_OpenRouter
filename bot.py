@@ -65,11 +65,11 @@ logging.getLogger('httpx').setLevel(logging.WARNING)
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
 
 # Настройка персистентного хранилища FSM
-# В Docker используем директорию /app/data, локально - корень проекта
-if os.path.exists('/app/data'):
-    storage_path = '/app/data/autoposting_bot.db'
+# В Docker используем директорию /app/database, локально - корень проекта
+if os.path.exists('/app/database'):
+    storage_path = '/app/database/fsm_storage.db'
 else:
-    storage_path = 'autoposting_bot.db'
+    storage_path = 'fsm_storage.db'
 storage = SQLStorage(storage_path, serializing_method="pickle")
 dp = Dispatcher(storage=storage)
 
