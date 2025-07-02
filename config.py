@@ -42,7 +42,7 @@ OPENROUTER_IMAGE_PROMPT_MODEL = os.getenv("OPENROUTER_IMAGE_PROMPT_MODEL", "deep
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # Ключ OpenAI для работы с Whisper (whisper-1)
 
 # Настройки retry для OpenRouter API (устойчивость к сбоям)
-OPENROUTER_MAX_RETRIES = int(os.getenv("OPENROUTER_MAX_RETRIES", "3"))  # Максимальное количество попыток
+OPENROUTER_MAX_RETRIES = int(os.getenv("OPENROUTER_MAX_RETRIES", "5"))  # Максимальное количество попыток
 OPENROUTER_RETRY_DELAYS = [1, 2, 4]  # Задержки между попытками в секундах (экспоненциальный backoff)
 
 # Отладочная информация для OpenRouter

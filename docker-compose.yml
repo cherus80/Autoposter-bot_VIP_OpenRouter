@@ -18,9 +18,9 @@ services:
       
       # AI сервисы
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-      - OPENROUTER_POST_MODEL=${OPENROUTER_POST_MODEL:-deepseek/deepseek-r1:free}
-      - OPENROUTER_IMAGE_PROMPT_MODEL=${OPENROUTER_IMAGE_PROMPT_MODEL:-deepseek/deepseek-r1:free}
-      - OPENROUTER_MAX_RETRIES=${OPENROUTER_MAX_RETRIES:-5}
+      - OPENROUTER_POST_MODEL=deepseek/deepseek-r1:free
+      - OPENROUTER_IMAGE_PROMPT_MODEL=deepseek/deepseek-r1:free
+      - OPENROUTER_MAX_RETRIES=5
       
       # Генерация изображений
       - FAL_AI_KEY=${FAL_AI_KEY}
