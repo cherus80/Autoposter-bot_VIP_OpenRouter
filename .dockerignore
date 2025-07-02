@@ -1,0 +1,71 @@
+# Git
+.git
+.gitignore
+
+# Docker
+.dockerignore
+
+# Environment
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.git
+.mypy_cache
+.pytest_cache
+.hypothesis
+
+# Temporary files
+temp/*
+*.tmp
+*.temp
+
+# Backups (будут созданы в контейнере)
+backups/*
+
+# Logs (будут созданы в контейнере)
+logs/*
+*.log
+
+# Database files (будут созданы в контейнере)
+*.db
+*.sqlite
+*.sqlite3
+
+# Documentation drafts
+*.md.bak
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test files
+tests/reports/*
+*.test
+
+# Local development
+local_*
+dev_* 

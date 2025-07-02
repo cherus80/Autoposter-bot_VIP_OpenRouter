@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  autoposter-bot:
+    build: .
+    container_name: autoposter-bot-v2
+    restart: unless-stopped
+    
+    # Переменные окружения для продакшена
+    environment:
+      # Основные токены (обязательные)
+      - BOT_TOKEN=${BOT_TOKEN}
+      - ADMIN_IDS=${ADMIN_IDS}
+      - CHANNEL_ID=${CHANNEL_ID}
+      
+      # AI сервисы
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      
+      # Генерация изображений
+      - FAL_AI_KEY=${FAL_AI_KEY}
+      
+      # VK публикация
+      - VK_ACCESS_TOKEN=${VK_ACCESS_TOKEN}
+      - VK_GROUP_ID=${VK_GROUP_ID}
+      - VK_CTA_TEXT=${VK_CTA_TEXT:-🔔 Подписывайтесь на нашу группу!}
+      
+      # Прокси (опционально)
+      - PROXY_URL=${PROXY_URL}
+      
+      # Логирование
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
+    
+    # Монтируем тома для сохранения данных
+    volumes:
+      - bot_data:/app/data
+      - bot_database:/app/database
+      - bot_backups:/app/backups
+      - bot_temp:/app/temp
+      - bot_logs:/app/logs
+    
+    # Логирование для лучшей диагностики
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    
+    # Политика перезапуска
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 5
+        window: 300s
+    
+    # Проверка здоровья контейнера
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health', timeout=5)" ]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+# Именованные тома для сохранения данных
+volumes:
+  bot_data:
+    driver: local
+  bot_database:
+    driver: local
+  bot_backups:
+    driver: local
+  bot_temp:
+    driver: local
+  bot_logs:
+    driver: local
+
+networks:
+  default:
+    driver: bridge 

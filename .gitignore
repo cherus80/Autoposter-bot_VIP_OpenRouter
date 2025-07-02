@@ -1,0 +1,135 @@
+# Конфиденциальные файлы
+.env
+*.env
+.env.local
+.env.production
+
+# Базы данных и данные
+*.db
+*.sqlite3
+backup_*.db
+backups/
+*.backup
+
+# Логи
+*.log
+logs/
+bot.log
+
+# Python кэш
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Виртуальные окружения
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Временные файлы
+temp/
+tmp/
+*.tmp
+*.temp
+
+# Тестирование
+.coverage
+.pytest_cache/
+.tox/
+htmlcov/
+.coverage.*
+
+# Локальные конфигурации
+.cursorrules
+local_config.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite3
+*.sqlite
+
+# Backups
+backups/
+*.bak
+*.backup
+*.zip
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db 

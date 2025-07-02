@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  autoposter-bot:
+    build: 
+      context: .
+      args:
+        - REBUILD_CACHE=v2.1-$(date +%s)  # Принудительная пересборка
+    container_name: autoposter-bot-v2.1  # Изменил версию
+    restart: unless-stopped
+    
+    # Переменные окружения (настройте в Portainer)
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+
+      - FAL_AI_KEY=${FAL_AI_KEY}
+      - VK_ACCESS_TOKEN=${VK_ACCESS_TOKEN}
+      - VK_GROUP_ID=${VK_GROUP_ID}
+      - VK_CTA_TEXT=${VK_CTA_TEXT}
+      - CHANNEL_ID=${CHANNEL_ID}
+      - ADMIN_IDS=${ADMIN_IDS}
+      - PROXY_URL=${PROXY_URL}
+    
+    # Монтируем тома для сохранения данных
+    volumes:
+      - bot_data:/app/data
+      - bot_database:/app/database  # Добавил недостающий том для БД
+      - bot_backups:/app/backups
+      - bot_temp:/app/temp
+      - bot_logs:/app/logs
+    
+    # Логирование
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Политика перезапуска
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+
+# Именованные тома для сохранения данных
+volumes:
+  bot_data:
+    driver: local
+  bot_database:  # Добавил недостающий том
+    driver: local
+  bot_backups:
+    driver: local
+  bot_temp:
+    driver: local
+  bot_logs:
+    driver: local 

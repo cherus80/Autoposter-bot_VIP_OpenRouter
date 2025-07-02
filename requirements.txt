@@ -1,0 +1,11 @@
+aiogram
+aiogram-sqlite-storage
+openai
+python-dotenv
+httpx[socks]>=0.23.0
+vk_api
+fal-client
+sqlalchemy
+aiosqlite
+greenlet
+aiofiles
