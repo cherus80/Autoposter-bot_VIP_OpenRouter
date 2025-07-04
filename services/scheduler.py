@@ -109,7 +109,7 @@ class PostScheduler:
                 platforms={"telegram": tg_ok, "vk": vk_ok},
                 topic=topic,
                 post_type=category,
-                published_at=datetime.now(),
+                published_at=datetime.utcnow(),
             )
             logging.info("[Publisher] Данные поста сохранены в БД.")
         else:
@@ -139,7 +139,7 @@ class PostScheduler:
                     sleep_sec = 0  # Публикуем сразу, если это первый пост
                     logging.info("[Scheduler] Постов в БД нет. Публикуем первый пост сразу.")
                 else:
-                    sleep_sec = (last_time + timedelta(minutes=interval_min) - datetime.now()).total_seconds()
+                    sleep_sec = (last_time + timedelta(minutes=interval_min) - datetime.utcnow()).total_seconds()
                     if sleep_sec <= 0:
                         logging.info("[Scheduler] Время публикации пришло! Интервал прошел.")
                     else:

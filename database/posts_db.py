@@ -24,9 +24,11 @@ async def count_posts(days_ago: int = None) -> int:
 async def get_last_post_time() -> datetime | None:
     """
     Возвращает время создания самого последнего поста.
+    Использует ID для определения последнего поста, а не время (из-за смешанных форматов времени).
     """
     async with async_session_maker() as session:
-        query = select(Post.published_at).order_by(desc(Post.published_at)).limit(1)
+        # Сортируем по ID (самый большой ID = последний пост)
+        query = select(Post.published_at).order_by(desc(Post.id)).limit(1)
         result = await session.execute(query)
         return result.scalar_one_or_none()
 

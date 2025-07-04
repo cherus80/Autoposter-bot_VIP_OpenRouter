@@ -38,13 +38,51 @@ from services.backup_scheduler import backup_scheduler
 from utils.error_handler import init_error_handler, ErrorSeverity, error_handler
 
 # ---------------------------------------------------------------------------
-# Логирование с улучшенным форматированием
+# Логирование с улучшенным форматированием и записью в файл
 # ---------------------------------------------------------------------------
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+import logging.handlers
+
+# Создаем корневой логгер
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.INFO)
+
+# Очищаем существующие обработчики
+for handler in root_logger.handlers[:]:
+    root_logger.removeHandler(handler)
+
+# Создаем форматтер
+formatter = logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
 )
+
+# 1. Консольный обработчик (для отладки)
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+console_handler.setFormatter(formatter)
+root_logger.addHandler(console_handler)
+
+# 2. Файловый обработчик с ротацией (основные логи)
+file_handler = logging.handlers.RotatingFileHandler(
+    'bot.log',
+    maxBytes=10*1024*1024,  # 10 MB
+    backupCount=5,          # Хранить 5 старых файлов
+    encoding='utf-8'
+)
+file_handler.setLevel(logging.INFO)
+file_handler.setFormatter(formatter)
+root_logger.addHandler(file_handler)
+
+# 3. Отдельный файл для ошибок
+error_handler = logging.handlers.RotatingFileHandler(
+    'bot_errors.log',
+    maxBytes=5*1024*1024,   # 5 MB
+    backupCount=3,          # Хранить 3 старых файла
+    encoding='utf-8'
+)
+error_handler.setLevel(logging.ERROR)
+error_handler.setFormatter(formatter)
+root_logger.addHandler(error_handler)
 
 # Настраиваем логи для всех ключевых модулей
 logger = logging.getLogger(__name__)
@@ -55,9 +93,12 @@ logging.getLogger('services.image_service').setLevel(logging.INFO)
 logging.getLogger('handlers').setLevel(logging.INFO)
 logging.getLogger('managers').setLevel(logging.INFO)
 
-# Уменьшаем шум от aiogram
+# Уменьшаем шум от aiogram и httpx
 logging.getLogger('aiogram').setLevel(logging.WARNING)
 logging.getLogger('httpx').setLevel(logging.WARNING)
+logging.getLogger('httpcore').setLevel(logging.WARNING)
+
+logger.info("🚀 Система логирования инициализирована: консоль + файлы (bot.log, bot_errors.log)")
 
 # ---------------------------------------------------------------------------
 # Bot / Dispatcher

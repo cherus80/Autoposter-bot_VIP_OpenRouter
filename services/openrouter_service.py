@@ -1,12 +1,12 @@
 """
 @file: services/openrouter_service.py
-@description: Сервис для работы с OpenRouter.ai API с retry механизмом
+@description: Сервис для работы с OpenRouter.ai API с retry механизмом (HTTP версия)
 @dependencies: config.py, utils/error_handler.py
-@created: 2025-01-29
+@created: 2025-01-30
 """
 
-from openai import OpenAI
 import httpx
+import json
 import logging
 import asyncio
 from typing import Dict, Any, Optional, List
@@ -28,32 +28,32 @@ RETRYABLE_ERRORS = [
 ]
 
 class OpenRouterService:
-    """Сервис для работы с OpenRouter.ai API"""
+    """Сервис для работы с OpenRouter.ai API через прямые HTTP запросы"""
     
     def __init__(self):
         self.api_key = OPENROUTER_API_KEY
         self.post_model = OPENROUTER_POST_MODEL
         self.image_prompt_model = OPENROUTER_IMAGE_PROMPT_MODEL
+        self.base_url = "https://openrouter.ai/api/v1"
         
-        # Настройка клиента OpenRouter
         if not self.api_key:
             logger.warning("OPENROUTER_API_KEY не найден в конфигурации. OpenRouter сервис недоступен.")
             self.client = None
             return
         
-        # Настройка HTTP клиента с прокси (если нужно)
+        # Определяем заголовки для всех запросов
+        self.headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://github.com/openrouter/autoposter-bot",
+            "X-Title": "Autoposter Bot"
+        }
+        
+        # Настройка HTTP клиента
         if PROXY_URL:
-            http_client = httpx.Client(proxies=PROXY_URL)
-            self.client = OpenAI(
-                base_url="https://openrouter.ai/api/v1",
-                api_key=self.api_key,
-                http_client=http_client
-            )
+            self.client = httpx.AsyncClient(proxies=PROXY_URL, timeout=30.0)
         else:
-            self.client = OpenAI(
-                base_url="https://openrouter.ai/api/v1",
-                api_key=self.api_key
-            )
+            self.client = httpx.AsyncClient(timeout=30.0)
         
         logger.info(f"OpenRouter сервис инициализирован с моделями: posts={self.post_model}, image_prompts={self.image_prompt_model}")
 
@@ -116,6 +116,14 @@ class OpenRouterService:
         if not model:
             model = self.post_model if use_for_posts else self.image_prompt_model
         
+        # Подготавливаем данные для запроса
+        payload = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens
+        }
+        
         last_error = None
         
         # Retry логика
@@ -128,33 +136,37 @@ class OpenRouterService:
                 else:
                     logger.info(f"Отправка запроса в OpenRouter API: модель={model}, сообщений={len(messages)}")
                 
-                completion = self.client.chat.completions.create(
-                    model=model,
-                    messages=messages,
-                    temperature=temperature,
-                    max_tokens=max_tokens
+                # Отправляем POST запрос
+                response = await self.client.post(
+                    f"{self.base_url}/chat/completions",
+                    headers=self.headers,
+                    json=payload
                 )
                 
-                # Преобразуем ответ в формат, совместимый с остальной системой
-                result = {
-                    "choices": [{
-                        "message": {
-                            "content": completion.choices[0].message.content
-                        }
-                    }],
-                    "usage": {
-                        "prompt_tokens": completion.usage.prompt_tokens if completion.usage else 0,
-                        "completion_tokens": completion.usage.completion_tokens if completion.usage else 0,
-                        "total_tokens": completion.usage.total_tokens if completion.usage else 0
-                    },
-                    "model": model
-                }
-                
-                if attempt > 0:
-                    logger.info(f"✅ OpenRouter API успешно ответил на попытке {attempt + 1}: модель={model}")
+                # Проверяем статус ответа
+                if response.status_code == 200:
+                    result = response.json()
+                    
+                    if attempt > 0:
+                        logger.info(f"✅ OpenRouter API успешно ответил на попытке {attempt + 1}: модель={model}")
+                    else:
+                        logger.info(f"Успешный ответ от OpenRouter API: модель={model}")
+                    
+                    return result
                 else:
-                    logger.info(f"Успешный ответ от OpenRouter API: модель={model}")
-                return result
+                    # Ошибка HTTP
+                    error_text = response.text
+                    error_msg = f"HTTP {response.status_code}: {error_text}"
+                    
+                    if response.status_code == 401:
+                        logger.error(f"❌ OpenRouter API: Ошибка аутентификации (401)")
+                        logger.error(f"Используемый API ключ: {self.api_key[:15]}...")
+                        logger.error(f"Заголовки: {self.headers}")
+                        logger.error(f"Ответ сервера: {error_text}")
+                        # Не повторяем при ошибках аутентификации
+                        break
+                    
+                    raise Exception(error_msg)
                 
             except Exception as e:
                 last_error = e
@@ -202,47 +214,15 @@ class OpenRouterService:
             },
             {
                 "role": "user",
-                "content": f"""Напиши информативный пост для социальных сетей на тему: "{topic}"
-
-СТРОГИЕ ТРЕБОВАНИЯ:
-- Формат: HTML с тегами <b>, <i> для форматирования
-- Длина: максимум 400-600 слов
-- Стиль: дерзко, уверенно, без воды, сразу к результату
-- Структура: строго следуй системному промпту
-- НЕ добавляй заголовки типа "Заголовок:" или "Тема:"
-- Используй ТОЛЬКО HTML теги <b> и <i>, НЕ используй ** или __
-
-Тема: {topic}"""
+                "content": f"Создай пост на тему: {topic}"
             }
         ]
         
-        result = await self.generate_content(
+        return await self.generate_content(
             messages=messages,
             model=model,
-            temperature=0.7,
-            max_tokens=800,
             use_for_posts=True
         )
-        
-        if not result:
-            return None
-        
-        # Извлекаем данные из ответа
-        choices = result.get("choices", [])
-        if not choices:
-            logger.error("OpenRouter API вернул пустой ответ")
-            return None
-        
-        content = choices[0]["message"]["content"]
-        
-        # Валидация и исправление HTML тегов
-        content = self._fix_html_tags(content)
-        
-        return {
-            "text": content,
-            "usage": result.get("usage", {}),
-            "model": result.get("model", model or self.post_model)
-        }
 
     @graceful_degradation(fallback_function=None)
     async def generate_image_prompt(
@@ -254,26 +234,27 @@ class OpenRouterService:
         Генерирует промпт для изображения на основе текста поста
         
         Args:
-            post_text: Текст поста
+            post_text: Текст поста для которого нужно создать промпт
             model: Модель для использования (если None, использует OPENROUTER_IMAGE_PROMPT_MODEL)
         
         Returns:
-            Промпт для генерации изображения или None в случае ошибки
+            Строка с промптом для изображения или None в случае ошибки
         """
+        # Системный промпт для генерации промптов изображений
+        system_prompt = """Ты генератор промптов для создания изображений. Создавай краткие и понятные промпты на английском языке для генерации изображений, которые соответствуют теме поста. 
+
+Промпт должен быть:
+- На английском языке
+- Конкретным и описательным
+- Без упоминания текста или слов на изображении
+- Фокусированным на визуальных элементах
+
+Отвечай только промптом, без дополнительных пояснений."""
+
         messages = [
             {
                 "role": "system",
-                "content": """Ты эксперт по созданию промптов для генерации изображений. 
-Проанализируй пост и создай краткий, но детальный промпт для создания изображения.
-
-ТРЕБОВАНИЯ К ПРОМПТУ:
-- Краткость: максимум 100-150 слов
-- Детальность: конкретные визуальные элементы
-- Стиль: профессиональный, современный
-- Язык: английский для лучшей генерации
-- Фокус: на ключевой идее поста
-
-Верни ТОЛЬКО текст промпта без дополнительных объяснений."""
+                "content": system_prompt
             },
             {
                 "role": "user",
@@ -284,72 +265,54 @@ class OpenRouterService:
         result = await self.generate_content(
             messages=messages,
             model=model,
-            temperature=0.5,
+            use_for_posts=False,
             max_tokens=200,
-            use_for_posts=False
+            temperature=0.8
         )
         
-        if not result:
-            return None
+        if result and result.get("choices"):
+            content = result["choices"][0]["message"]["content"]
+            return self._fix_html_tags(content.strip())
         
-        choices = result.get("choices", [])
-        if not choices:
-            return None
-        
-        prompt = choices[0]["message"]["content"].strip()
-        logger.info(f"Сгенерирован промпт для изображения: {prompt[:50]}...")
-        
-        return prompt
+        return None
 
     def _fix_html_tags(self, text: str) -> str:
-        """Исправляет незакрытые HTML теги в тексте"""
+        """
+        Убирает HTML теги из текста
+        
+        Args:
+            text: Исходный текст
+            
+        Returns:
+            Текст без HTML тегов
+        """
         import re
-        
-        # Удаляем неподдерживаемые теги
-        text = re.sub(r'<br\s*/?>', '\n', text, flags=re.IGNORECASE)
-        text = re.sub(r'</?(?:p|div|span)[^>]*>', '', text, flags=re.IGNORECASE)
-        text = re.sub(r'</?(?:em|strong|h[1-6]|ul|ol|li)[^>]*>', '', text, flags=re.IGNORECASE)
-        
-        # Исправляем незакрытые теги <b> и <i>
-        open_b = text.count('<b>') - text.count('</b>')
-        if open_b > 0:
-            text += '</b>' * open_b
-        
-        open_i = text.count('<i>') - text.count('</i>')
-        if open_i > 0:
-            text += '</i>' * open_i
-        
-        return text.strip()
+        # Убираем HTML теги
+        clean_text = re.sub(r'<[^>]+>', '', text)
+        return clean_text.strip()
 
     def get_available_models(self) -> Dict[str, str]:
-        """Возвращает доступные модели OpenRouter"""
+        """
+        Возвращает словарь доступных моделей
+        
+        Returns:
+            Словарь с моделями {название: описание}
+        """
         return {
-            # Бесплатные модели
-            "deepseek/deepseek-r1:free": "DeepSeek R1 (Бесплатная)",
-            "google/gemini-flash-1.5": "Google Gemini Flash 1.5",
-            
-            # Claude модели (Anthropic)
-            "anthropic/claude-3.5-sonnet": "Claude 3.5 Sonnet",
-            "anthropic/claude-3.7-sonnet": "Claude 3.7 Sonnet",
-            "anthropic/claude-sonnet-4": "Claude Sonnet 4 (Новейшая)",
-            "anthropic/claude-3-haiku": "Claude 3 Haiku (Быстрая)",
-            
-            # OpenAI модели
-            "openai/gpt-3.5-turbo": "OpenAI GPT-3.5 Turbo",
-            "openai/gpt-4": "OpenAI GPT-4",
-            "openai/gpt-4o-mini": "OpenAI GPT-4o Mini",
-            "openai/gpt-4o": "OpenAI GPT-4o",
-            
-            # Другие популярные модели
-            "meta-llama/llama-3.1-70b-instruct": "Meta Llama 3.1 70B",
-            "mistralai/mistral-7b-instruct": "Mistral 7B Instruct"
+            "deepseek/deepseek-r1:free": "DeepSeek R1 (бесплатная)",
+            "openai/gpt-4o-mini-2024-07-18": "GPT-4o Mini (платная)",
+            "anthropic/claude-sonnet-4": "Claude Sonnet 4 (платная)",
+            "mistralai/mistral-nemo:free": "Mistral Nemo (бесплатная)",
+            "google/gemma-2-9b-it:free": "Google Gemma 2 9B (бесплатная)"
         }
 
     async def close(self):
-        """Закрывает соединения"""
-        if hasattr(self.client, 'close'):
-            await self.client.close()
+        """Закрывает HTTP клиент"""
+        if self.client:
+            await self.client.aclose()
 
     def __del__(self):
-        """Деструктор для очистки ресурсов"""
-        pass 
+        """Деструктор для закрытия клиента"""
+        if hasattr(self, 'client') and self.client:
+            # В деструкторе просто помечаем для закрытия
+            pass 

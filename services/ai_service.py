@@ -168,8 +168,12 @@ HTML ТЕГИ - КРИТИЧЕСКИ ВАЖНО:
             if not result:
                 raise Exception("OpenRouter не вернул результат")
             
-            final_text = result["text"]
-            logging.info(f"Сгенерирован текст через OpenRouter: {final_text[:100]}...")
+            # Извлекаем текст из стандартного формата OpenAI API
+            if result.get("choices") and len(result["choices"]) > 0:
+                final_text = result["choices"][0]["message"]["content"]
+                logging.info(f"Сгенерирован текст через OpenRouter: {final_text[:100]}...")
+            else:
+                raise Exception("Некорректный формат ответа от OpenRouter")
             
         except Exception as e:
             logging.error(f"Ошибка при генерации текста поста через OpenRouter: {e}")

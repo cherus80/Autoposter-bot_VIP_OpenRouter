@@ -6,6 +6,7 @@
 """
 
 import logging
+from datetime import datetime
 from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -20,7 +21,8 @@ from managers.publishing_manager import (
     publish_to_vk,
 )
 from database.posts_db import save_post
-from config import FAL_AI_KEY, OPENAI_API_KEY
+from utils.text_utils import TextUtils, transcribe_voice_message
+from config import FAL_AI_KEY, OPENAI_API_KEY, ADMIN_ID, CHANNEL_ID
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -130,7 +132,6 @@ async def msg_topic(msg: Message, state: FSMContext):
         await msg.answer("🎤 Распознаю голосовое сообщение...")
         
         try:
-            from utils.text_utils import transcribe_voice_message
             transcribed_text = await transcribe_voice_message(msg.bot, msg.voice)
             
             if transcribed_text:
@@ -184,7 +185,6 @@ async def msg_topic(msg: Message, state: FSMContext):
             return
         
         # Улучшаем качество поста
-        from utils.text_utils import TextUtils
         improved_text = TextUtils.improve_post_quality(result["text"])
         
         await state.update_data(
@@ -259,8 +259,8 @@ async def cb_publish(cb: CallbackQuery, state: FSMContext):
         post_text = data["post_text"]
         image_url = data.get("image_url")
         
-        # Получаем настройки публикации
-        settings = await get_publishing_settings(user_id=cb.from_user.id)
+        # Получаем настройки публикации (используем ADMIN_ID)
+        settings = await get_publishing_settings(user_id=int(ADMIN_ID))
         
         published_platforms = []
         errors = []
@@ -269,10 +269,8 @@ async def cb_publish(cb: CallbackQuery, state: FSMContext):
         if settings.publish_to_tg:
             try:
                 # Используем chat_id из конфигурации, а не текущий чат
-                from config import CHANNEL_ID
                 if CHANNEL_ID:
                     # Форматируем текст специально для Telegram
-                    from utils.text_utils import TextUtils
                     tg_formatted_text = TextUtils.format_for_platform(post_text, "telegram")
                     await publish_to_telegram(cb.bot, CHANNEL_ID, tg_formatted_text, image_url)
                     published_platforms.append("Telegram")
@@ -290,7 +288,6 @@ async def cb_publish(cb: CallbackQuery, state: FSMContext):
                 # Проверяем что VK сервис настроен
                 if vk_service.is_configured:
                     # Форматируем текст специально для VK
-                    from utils.text_utils import TextUtils
                     vk_formatted_text = TextUtils.format_for_platform(post_text, "vk")
                     success = await publish_to_vk(vk_service, vk_formatted_text, image_url)
                     if success:
@@ -315,14 +312,15 @@ async def cb_publish(cb: CallbackQuery, state: FSMContext):
                 # Определяем тему из FSM или используем начало текста
                 topic = data.get("topic", post_text[:50] + "..." if len(post_text) > 50 else post_text)
                 
-                # Сохраняем в БД
+                # Сохраняем в БД с текущим временем UTC (единый стандарт)
                 await save_post(
                     content=post_text,
                     with_image=bool(image_url),
                     image_url=image_url,
                     platforms=platforms,
                     topic=topic,
-                    post_type="Ручной"
+                    post_type="Ручной",
+                    published_at=datetime.utcnow()
                 )
                 
                 logger.info(f"Пост сохранен в базу данных. Платформы: {published_platforms}")

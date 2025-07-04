@@ -22,7 +22,7 @@ def format_time_with_timezone(dt: datetime, user_timezone: str) -> str:
         return None
     
     try:
-        # Парсим часовой пояс
+        # Парсим часовой пояс пользователя
         if user_timezone.startswith('+'):
             tz_offset = int(user_timezone[1:])
         elif user_timezone.startswith('-'):
@@ -30,14 +30,13 @@ def format_time_with_timezone(dt: datetime, user_timezone: str) -> str:
         else:
             tz_offset = 3  # По умолчанию UTC+3 (Москва)
         
-        # Создаем timezone объект
-        user_tz = timezone(timedelta(hours=tz_offset))
-        
-        # Если время в БД в UTC, конвертируем
+        # Все новые посты сохраняются в UTC, поэтому интерпретируем время как UTC
         if dt.tzinfo is None:
+            # Интерпретируем время из БД как UTC
             dt = dt.replace(tzinfo=timezone.utc)
         
         # Конвертируем в пользовательский часовой пояс
+        user_tz = timezone(timedelta(hours=tz_offset))
         local_time = dt.astimezone(user_tz)
         
         return local_time.strftime('%d.%m.%Y %H:%M')
@@ -107,7 +106,7 @@ async def cb_menu_stats(cb: CallbackQuery):
             # Вычисляем время до следующего поста
             if last_post_time:
                 next_post_time = last_post_time + timedelta(minutes=interval_minutes)
-                now = datetime.now()
+                now = datetime.utcnow()
                 
                 if next_post_time > now:
                     time_diff = next_post_time - now
