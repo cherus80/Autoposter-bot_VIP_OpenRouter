@@ -49,11 +49,16 @@ class OpenRouterService:
             "X-Title": "Autoposter Bot"
         }
         
-        # Настройка HTTP клиента
+        # Настройка HTTP клиента с корректной конфигурацией прокси
         if PROXY_URL:
-            self.client = httpx.AsyncClient(proxies=PROXY_URL, timeout=30.0)
+            proxies = {
+                "http://": PROXY_URL,
+                "https://": PROXY_URL
+            }
+            self.client = httpx.AsyncClient(proxies=proxies, timeout=30.0, follow_redirects=True)
+            logger.info(f"OpenRouter сервис инициализирован с прокси")
         else:
-            self.client = httpx.AsyncClient(timeout=30.0)
+            self.client = httpx.AsyncClient(timeout=30.0, follow_redirects=True)
         
         logger.info(f"OpenRouter сервис инициализирован с моделями: posts={self.post_model}, image_prompts={self.image_prompt_model}")
 
