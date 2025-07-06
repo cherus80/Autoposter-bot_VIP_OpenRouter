@@ -234,13 +234,18 @@ HTML ТЕГИ - КРИТИЧЕСКИ ВАЖНО:
                 
             if result and result.get("choices"):
                 response_content = result["choices"][0]["message"]["content"]
-                logging.info("Промпт изображения сгенерирован через OpenRouter")
-                response = type('obj', (object,), {
-                    'choices': [type('obj', (object,), {
-                        'message': type('obj', (object,), {'content': response_content})()
-                    })()]
-                })()
+                if response_content.strip():
+                    logging.info("Промпт изображения сгенерирован через OpenRouter")
+                    response = type('obj', (object,), {
+                        'choices': [type('obj', (object,), {
+                            'message': type('obj', (object,), {'content': response_content})()
+                        })()]
+                    })()
+                else:
+                    logging.warning("OpenRouter вернул пустой промпт изображения")
+                    response = None
             else:
+                logging.warning("OpenRouter не вернул choices для промпта изображения")
                 response = None
                 
         except Exception as e:
@@ -248,16 +253,21 @@ HTML ТЕГИ - КРИТИЧЕСКИ ВАЖНО:
             response = None
         
         if not response:
-            logging.warning("Не удалось сгенерировать промпт для изображения")
-            return None
-            
-        image_prompt_for_fal = response.choices[0].message.content
+            logging.warning("Не удалось сгенерировать промпт для изображения через OpenRouter. Используем fallback.")
+            # Используем fallback для генерации промпта
+            fallback_prompt = self._generate_fallback_image_prompt(post_text)
+            if image_style and image_style.lower() != 'none':
+                fallback_prompt += f", in the style of {image_style}"
+            logging.info(f"Используется fallback промпт для изображения: {fallback_prompt[:100]}...")
+            image_prompt_for_fal = fallback_prompt
+        else:
+            image_prompt_for_fal = response.choices[0].message.content
         
-        # Добавляем стиль к готовому промпту, если он указан
-        if image_style and image_style != "none":
+        # Добавляем стиль к готовому промпту, если он указан (только если не fallback)
+        if response and image_style and image_style != "none":
             logging.info(f"Добавляется стиль изображения: {image_style}")
             image_prompt_for_fal += f", in the style of {image_style}"
-        else:
+        elif response:
             logging.info("Стиль изображения не указан или 'none'.")
         
         logging.info(f"Финальный промпт для fal.ai: {image_prompt_for_fal[:100]}...")
@@ -417,9 +427,12 @@ HTML ТЕГИ - КРИТИЧЕСКИ ВАЖНО:
                     # Используем OpenRouter для генерации контекстуального промпта
                     logging.info("Генерация контекстуального промпта через OpenRouter")
                     
+                    # ИСПРАВЛЕНИЕ: Заменяем плейсхолдер {post_text} на реальный текст поста
+                    processed_system_prompt = custom_image_prompt_template.replace('{post_text}', post_text)
+                    
                     messages = [
-                            {"role": "system", "content": custom_image_prompt_template},
-                            {"role": "user", "content": post_text}
+                            {"role": "system", "content": processed_system_prompt},
+                            {"role": "user", "content": "Generate image prompt based on the post text provided above."}
                     ]
                     
                     result = await self.openrouter_service.generate_content(
@@ -444,12 +457,14 @@ HTML ТЕГИ - КРИТИЧЕСКИ ВАЖНО:
                     logging.error(f"Ошибка при генерации контекстуального промпта через OpenRouter: {e}")
                     response = None
                 
-                if response:
+                if response and response.choices[0].message.content.strip():
                     scene_description = response.choices[0].message.content.strip()
+                    logging.info(f"Сгенерирован новый промпт для fal.ai: {scene_description[:150]}...")
                 else:
-                    # Fallback если не удалось получить ответ
-                    scene_description = f"A photorealistic image inspired by the following text: {post_text}"
-                logging.info(f"Сгенерирован новый промпт для fal.ai: {scene_description[:150]}...")
+                    # Fallback если не удалось получить ответ или ответ пустой
+                    logging.warning("OpenRouter вернул пустой ответ для промпта изображения. Используем fallback.")
+                    scene_description = self._generate_fallback_image_prompt(post_text)
+                    logging.info(f"Используется fallback промпт для fal.ai: {scene_description[:150]}...")
 
             except Exception as e:
                 logging.error(f"Ошибка при генерации промпта для изображения с помощью GPT: {e}")
@@ -480,6 +495,41 @@ HTML ТЕГИ - КРИТИЧЕСКИ ВАЖНО:
             
         # Очищаем от лишних пробелов и переносов строк
         return " ".join(scene_description.strip().split())
+
+    def _generate_fallback_image_prompt(self, post_text: str) -> str:
+        """
+        Генерирует простой промпт для изображения без использования AI
+        
+        Args:
+            post_text: Текст поста
+            
+        Returns:
+            Простой промпт для изображения
+        """
+        # Простые ключевые слова для определения темы
+        post_lower = post_text.lower()
+        
+        # Определяем основную тему
+        if any(word in post_lower for word in ['ai', 'ии', 'artificial', 'intelligence', 'машинное', 'обучение', 'нейронн', 'gpt', 'chatgpt', 'claude']):
+            theme = "modern AI technology workspace"
+        elif any(word in post_lower for word in ['код', 'программ', 'разработ', 'code', 'program', 'develop', 'software']):
+            theme = "software development environment"
+        elif any(word in post_lower for word in ['бизнес', 'business', 'стартап', 'startup', 'компания', 'company']):
+            theme = "professional business environment"
+        elif any(word in post_lower for word in ['технолог', 'technology', 'инновац', 'innovation', 'digital']):
+            theme = "modern technology setup"
+        else:
+            theme = "professional modern workspace"
+        
+        # Создаем базовый промпт
+        base_prompt = f"""A photorealistic image of a {theme}, 
+professional photography, high quality, detailed, 
+modern office setting, clean composition, 
+natural lighting, realistic textures, 
+shot with professional camera, 8K resolution"""
+        
+        # Очищаем от лишних пробелов и переносов строк
+        return " ".join(base_prompt.strip().split())
     
     async def generate_image_with_fal_api(self, post_text: str, image_style: str = None) -> dict:
         """Генерирует изображение через FAL API с использованием fal-client."""

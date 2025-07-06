@@ -5,8 +5,8 @@ services:
     build: 
       context: .
       args:
-        - REBUILD_CACHE=v2.1-$(date +%s)  # Принудительная пересборка
-    container_name: autoposter-bot-v2.1  # Изменил версию
+        - REBUILD_CACHE=v2.1
+    container_name: autoposter-bot-v2.1
     restart: unless-stopped
     
     # Переменные окружения (настройте в Portainer)
@@ -51,13 +51,21 @@ services:
         max-size: "10m"
         max-file: "3"
     
+    # Проверка здоровья контейнера
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
     # Политика перезапуска
     deploy:
       restart_policy:
         condition: on-failure
-        delay: 5s
-        max_attempts: 3
-        window: 120s
+        delay: 10s
+        max_attempts: 5
+        window: 300s
 
 # Именованные тома для сохранения данных
 volumes:

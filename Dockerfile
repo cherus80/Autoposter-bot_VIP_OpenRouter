@@ -55,9 +55,11 @@ USER botuser
 RUN ls -la /app/ && \
     ls -la /app/database/
 
-# Метка версии для отслеживания
-LABEL version="v2.1-fixes"
-LABEL description="Autoposter Bot with OpenRouter.ai integration and improved security"
+# Метки версии для отслеживания
+LABEL version="v2.1-image-fixes"
+LABEL description="Autoposter Bot with OpenRouter.ai integration and image generation fixes"
+LABEL maintainer="Руслан <ruslancernov@example.com>"
+LABEL updated="2025-07-06"
 
 # Открываем порт (если потребуется для webhook)
 EXPOSE 8000

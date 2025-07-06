@@ -69,6 +69,33 @@ class OpenRouterService:
         """
         error_str = str(error).lower()
         
+        # НЕ повторяем критические ошибки, которые не исправятся повторами
+        non_retryable_keywords = [
+            'unsupported_country_region_territory',  # Географические ограничения
+            'country, region, or territory not supported',
+            'region not supported',
+            'country not supported',
+            'territory not supported',
+            'authentication',  # Проблемы с ключом API
+            'unauthorized',
+            'invalid_api_key',
+            'insufficient_quota',  # Проблемы с квотой/оплатой
+            'quota_exceeded',
+            'model_not_found',  # Модель не существует
+            'invalid_model',
+            'blocked_country',  # Дополнительные варианты геоблокировки
+            'restricted_region',
+            'geo_blocked',
+            'geoblocked'
+        ]
+        
+        # Проверяем на критические ошибки
+        for keyword in non_retryable_keywords:
+            if keyword in error_str:
+                logger.error(f"❌ Критическая ошибка, повторы бесполезны: {keyword}")
+                logger.error("🚨 Рекомендуется переключиться на модель без географических ограничений")
+                return False
+        
         # Проверяем специфичные retryable ошибки
         for retryable_error in RETRYABLE_ERRORS:
             if retryable_error.lower() in error_str:
@@ -77,6 +104,19 @@ class OpenRouterService:
         # Проверяем HTTPStatusError от httpx
         if hasattr(error, 'response'):
             status_code = error.response.status_code
+            
+            # 403 может быть геоблокировкой - не повторяем
+            if status_code == 403:
+                logger.error(f"❌ HTTP 403 - возможны географические ограничения или проблемы с доступом")
+                logger.error("💡 Рекомендуется проверить модель и регион")
+                return False
+            
+            # 401 - проблемы с авторизацией
+            if status_code == 401:
+                logger.error(f"❌ HTTP 401 - проблемы с авторизацией API")
+                return False
+            
+            # Retryable статусы
             if status_code in [429, 502, 503, 504]:
                 return True
         
